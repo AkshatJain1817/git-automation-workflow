@@ -1,0 +1,26 @@
+#!/bin/bash
+
+echo "running pre commit checks"
+
+files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+
+for file in $files; do
+	python3 -m py_compile "$file"
+	if [ $? -ne 0 ]; then
+		echo "syntax error in $file"
+		exit 1
+	fi
+done
+
+if git diff --cached --name-only --diff-filter=ACM | grep -v '^.githooks/' > /dev/null; then
+	for file in $files; do
+		if grep -i print "$file"; then
+			echo "remove print before committing in $file"
+			exit 1
+		fi
+	done
+fi
+	
+
+echo "all checks done"
+exit 0
