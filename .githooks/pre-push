@@ -1,0 +1,41 @@
+#!/bin/bash
+
+echo "running pre-push checks"
+
+files=$(git diff --name-only origin/$(git rev-parse --abbrev-ref HEAD) | grep '\.py$')
+
+if [ -z '$files' ]; then
+	echo "no python files detected"
+	exit 0
+fi
+
+for file in $files; do
+	if [ -f "$file" ]; then
+		python3 -m py_compile "$file"
+		if [ $? -ne 0 ]; then
+			echo "syntax error in $file"
+			exit 1
+		fi
+	fi
+done
+
+for file in '$files'; do
+	if [ -f '$file' ]; then
+		if grep -E '^\s*print\(' "$file"; then
+			echo "remove debug print statement from $file"
+			exit 1
+		fi
+	fi
+done
+
+if [ -f "pytest.ini" ] || [ -d "tests" ]; then
+	echo "running tests..."
+	pytest
+	if [ $? -ne 0 ]; then
+		echo "test failed push aborted"
+		exit 1
+	fi
+fi
+
+echo "all pre-push checks passed"
+exit 0
